@@ -5,6 +5,7 @@ import threading
 import time
 from collections import Counter
 from functools import partial
+from datetime import datetime, timedelta
 
 from celery.events import EventReceiver
 from celery.events.state import State
@@ -116,6 +117,7 @@ class Events(threading.Thread):
     # pylint: disable=too-many-arguments
     def __init__(self, capp, io_loop, db=None, persistent=False,
                  enable_events=True, state_save_interval=0,
+                 task_expires=0, purge_task_interval=0,
                  **kwargs):
         threading.Thread.__init__(self)
         self.daemon = True
@@ -128,6 +130,8 @@ class Events(threading.Thread):
         self.enable_events = enable_events
         self.state = None
         self.state_save_timer = None
+        self.task_expires = timedelta(seconds = task_expires)
+        self.clear_tasks_timer = None
 
         if self.persistent:
             logger.debug("Loading state from '%s'...", self.db)
@@ -140,6 +144,9 @@ class Events(threading.Thread):
                 self.state_save_timer = PeriodicCallback(self.save_state,
                                                          state_save_interval)
 
+            if self.task_expires and purge_task_interval:
+                self.clear_tasks_timer = PeriodicCallback(self.clear_tasks, purge_task_interval)
+    
         if not self.state:
             self.state = EventsState(**kwargs)
 
@@ -155,6 +162,10 @@ class Events(threading.Thread):
         if self.state_save_timer:
             logger.debug("Starting state save timer...")
             self.state_save_timer.start()
+
+        if self.clear_tasks_timer:
+            logger.debug("Starting clear tasks timer...")
+            self.clear_tasks_timer.start()
 
     def stop(self):
         if self.enable_events:
@@ -208,3 +219,11 @@ class Events(threading.Thread):
     def on_event(self, event):
         # Call EventsState.event in ioloop thread to avoid synchronization
         self.io_loop.add_callback(partial(self.state.event, event))
+
+    def clear_tasks(self):
+        # Clear expired tasks
+        now = datetime.now()
+        for uuid, task in self.state.tasks_by_time():
+            if task.timestamp <= (now - self.task_expires).timestamp():
+                del self.state.tasks[uuid]
+        self.state.rebuild_taskheap()

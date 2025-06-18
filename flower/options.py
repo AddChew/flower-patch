@@ -68,6 +68,8 @@ define("auth_provider", default=None, type=str, help="auth handler class")
 define("url_prefix", type=str, help="base url prefix")
 define("task_runtime_metric_buckets", type=float, default=Histogram.DEFAULT_BUCKETS,
        multiple=True, help="histogram latency bucket value")
+define("task_expires", type=int, default=0, help="time (in seconds) after which completed tasks are purged from memory")
+define("purge_task_interval", type=int, default=0, help="expired task purge interval (in milliseconds)")
 
 
 default_options = options
