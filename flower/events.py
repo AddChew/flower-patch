@@ -176,6 +176,10 @@ class Events(threading.Thread):
             logger.debug("Stopping state save timer...")
             self.state_save_timer.stop()
 
+        if self.clear_tasks_timer:
+            logger.debug("Stopping clear tasks timer...")
+            self.clear_tasks_timer.stop()
+
         if self.persistent:
             self.save_state()
 
