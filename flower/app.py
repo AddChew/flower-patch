@@ -63,7 +63,8 @@ class Flower(tornado.web.Application):
             io_loop=self.io_loop,
             max_workers_in_memory=self.options.max_workers,
             max_tasks_in_memory=self.options.max_tasks,
-            task_expires=self.options.task_expires)
+            task_expires=self.options.task_expires,
+            purge_task_interval=self.options.purge_task_interval)
         self.started = False
 
     def start(self):
